@@ -131,4 +131,92 @@ if st.button("Enviar mi encuesta", type="primary"):
         
         st.success("Encuesta enviada con exito! Gracias por participar")
         st.balloons()
+
         st.session_state.redes_temp = []
+
+# === AÑADE ESTO AL FINAL DEL ARCHIVO (después del botón de enviar) ===
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Pestañas: Encuesta | Resultados
+tab1, tab2 = st.tabs(["📊 Hacer la encuesta", "📈 Resultados generales"])
+
+with tab1:
+    # === TODO EL CÓDIGO QUE YA TENÍAS (hasta el final) ===
+    # (pega aquí todo tu código original desde st.title hasta el final)
+    pass  # (aquí va tu código original)
+
+with tab2:
+    st.header("Estadísticas generales de todas las encuestas")
+    
+    if not os.path.exists("datos_encuestas.csv"):
+        st.warning("Aún no hay datos. Sé el primero en responder la encuesta!")
+    else:
+        df = pd.read_csv("datos_encuestas.csv")
+        
+        if len(df) == 0:
+            st.warning("No hay datos todavía.")
+        else:
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.subheader("Distribución por carrera")
+                carrera_counts = df['carrera'].value_counts()
+                fig1, ax1 = plt.subplots()
+                sns.barplot(x=carrera_counts.values, y=carrera_counts.index, palette="viridis", ax=ax1)
+                ax1.set_title("Número de respuestas por carrera")
+                ax1.set_xlabel("Cantidad de estudiantes")
+                st.pyplot(fig1)
+                
+                st.subheader("Nivel de uso (1-10)")
+                nivel_counts = df['nivel'].value_counts().sort_index()
+                fig2, ax2 = plt.subplots()
+                bars = ax2.bar(nivel_counts.index, nivel_counts.values, color="#ff4444")
+                ax2.set_xticks(range(1,11))
+                ax2.set_title("Distribución del nivel de adicción")
+                ax2.set_xlabel("Nivel (1 = muy bajo, 10 = crítico)")
+                ax2.set_ylabel("Número de personas")
+                # Colorear barras peligrosas
+                for i in range(6,10):
+                    bars[i].set_color('#ff0000')
+                st.pyplot(fig2)
+
+            with col2:
+                st.subheader("Horas totales diarias promedio")
+                avg_horas = df['total_horas'].mean()
+                st.metric("Promedio de horas diarias", f"{avg_horas:.2f} h")
+                
+                st.subheader("Distribución de horas diarias")
+                fig3, ax3 = plt.subplots()
+                ax3.hist(df['total_horas'], bins=20, color="#6666ff", edgecolor='black')
+                ax3.set_title("Histograma de horas diarias en redes sociales")
+                ax3.set_xlabel("Horas por día")
+                ax3.set_ylabel("Número de estudiantes")
+                st.pyplot(fig3)
+                
+                st.subheader("Hora pico de uso")
+                hora_counts = df['hora_pico'].value_counts().sort_index()
+                fig4, ax4 = plt.subplots()
+                ax4.bar(hora_counts.index, hora_counts.values, color="#00aa00")
+                ax4.set_xticks(range(0,24,2))
+                ax4.set_title("Hora del día con más uso")
+                ax4.set_xlabel("Hora (formato 24h)")
+                ax4.set_ylabel("Cantidad de personas")
+                st.pyplot(fig4)
+
+            # Contenido más visto
+            st.subheader("Tipos de contenido más consumidos")
+            contenido_lista = []
+            for texto in df['contenido_favorito']:
+                if texto != "Ninguno" and pd.notna(texto):
+                    contenido_lista.extend([x.strip() for x in texto.split("|")])
+            
+            if contenido_lista:
+                contenido_df = pd.Series(contenido_lista).value_counts().head(10)
+                fig5, ax5 = plt.subplots()
+                sns.barplot(x=contenido_df.values, y=contenido_df.index, palette="magma", ax=ax5)
+                ax5.set_title("Top 10 tipos de contenido más vistos")
+                st.pyplot(fig5)
+            
+            st.success(f"Total de encuestas recolectadas: {len(df)}")
