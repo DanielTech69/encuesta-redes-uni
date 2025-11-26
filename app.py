@@ -1,4 +1,4 @@
-# app.py - VERSIÓN FINAL OFICIAL (100% funcional y perfecta)
+# app.py - VERSIÓN FINAL OFICIAL CON "AÑADIR OTRA RED"
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -6,10 +6,10 @@ from datetime import datetime
 import os
 
 st.set_page_config(page_title="Encuesta Redes Sociales UNI", layout="centered")
-st.title("¿Cuánto usas redes sociales? + ¿Qué evento quieres en la UNI?")
-st.markdown("**Encuesta pública de la Universidad Salesiana** | Resultados en vivo al final")
+st.title("¿Cuánto usas las redes? + ¿Qué evento quieres en la UNI?")
+st.markdown("**Universidad Salesiana de Bolivia** | Resultados en vivo al final")
 
-CSV_FILE = "datos_finales.csv"
+CSV_FILE = "datos_definitivos.csv"
 
 # Crear archivo si no existe
 if not os.path.exists(CSV_FILE):
@@ -17,13 +17,13 @@ if not os.path.exists(CSV_FILE):
                                "Contenido_Favorito", "Actividad_Sugerida", "Nivel", "Fecha"])
     df.to_csv(CSV_FILE, index=False)
 
-# Opciones de redes
-redes_opciones = [
-    "Instagram", "TikTok", "WhatsApp", "YouTube", "Facebook", 
-    "Twitter/X", "Snapchat", "Twitch", "Discord", "Pinterest", "Juegos (Steam, Roblox, etc.)", "Otra"
+# Lista inicial de redes
+redes_base = [
+    "Instagram", "TikTok", "WhatsApp", "YouTube", "Facebook", "Twitter/X", 
+    "Snapchat", "Twitch", "Discord", "Pinterest", "Juegos (Steam, Roblox, etc.)", "BeReal"
 ]
 
-# Opciones de contenido (tus 19 exactas)
+# 19 tipos de contenido que me diste
 contenidos = [
     "Tutoriales (paso a paso)", "Bailes", "Lip-sync", "Proceso vs. resultado", "Carruseles orgánicos",
     "Mal y bien (cómo NO hacerlo)", "Contenido sobrio/reflexivo", "Los tops (listas)", "Videos con efecto doble",
@@ -33,44 +33,69 @@ contenidos = [
 
 with st.form("encuesta_final"):
     st.subheader("1. Tus datos")
-    nombre = st.text_input("Nombre completo (se mostrará públicamente)", placeholder="Juan Pérez")
+    nombre = st.text_input("Nombre completo (se verá públicamente)")
     carrera = st.selectbox("Carrera", [
         "Ingeniería de Sistemas", "Ingeniería Comercial", "Psicología", "Derecho", "Arquitectura", 
         "Medicina", "Contaduría", "Diseño Gráfico", "Otra"
     ])
-    numero = st.text_input("Tu número (opcional, se mostrará)", placeholder="71234567")
+    numero = st.text_input("Tu número (opcional)")
 
-    st.subheader("2. Redes sociales que usas y tiempo diario")
-    redes_seleccionadas = st.multiselect("Selecciona todas las que usas", redes_opciones)
+    st.subheader("2. Redes sociales y tiempo diario")
     
+    # Estado para guardar las redes seleccionadas
+    if "redes_lista" not in st.session_state:
+        st.session_state.redes_lista = []
+
+    # Añadir red predefinida
+    red_pre = st.selectbox("Selecciona una red", [""] + redes_base + ["Otra (escribir)"])
+    if red_pre and red_pre not in st.session_state.redes_lista:
+        if st.button(f"Añadir {red_pre}"):
+            if red_pre == "Otra (escribir)":
+                otra = st.text_input("Escribe el nombre de la red", key="otra_input")
+                if otra and st.button("Confirmar y añadir"):
+                    st.session_state.redes_lista.append(otra)
+                    st.success(f"{otra} añadida")
+                    st.rerun()
+            else:
+                st.session_state.redes_lista.append(red_pre)
+                st.rerun()
+
+    # Mostrar redes añadidas con horas/minutos
     horas_totales = 0
     redes_con_horas = []
-    for red in redes_seleccionadas:
+    for i, red in enumerate(st.session_state.redes_lista):
+        st.markdown(f"**{i + 1}. {red}**")
         col1, col2 = st.columns(2)
         with col1:
-            st.write(f"**{red}**")
+            horas = st.selectbox(f"Horas en {red}", options=list(range(0, 21)), key=f"h_{i}")
         with col2:
-            horas = st.selectbox(f"Horas en {red}", options=list(range(0, 21)), index=2, key=f"h_{red}")
-            minutos = st.selectbox(f"Minutos en {red}", options=[0, 15, 30, 45], index=0, key=f"m_{red}")
-            total_min = horas * 60 + minutos
+            minutos = st.selectbox(f"Minutos", options=[0, 15, 30, 45], key=f"m_{i}")
+        total_min = horas * 60 + minutos
+        if total_min > 0:
             horas_decimal = round(total_min / 60, 2)
-            if horas_decimal > 0:
-                horas_totales += horas_decimal
-                redes_con_horas.append(f"{red}: {horas}h {minutos}m")
+            horas_totales += horas_decimal
+            redes_con_horas.append(f"{red}: {horas}h {minutos}m")
+
+    # Botón para eliminar red
+    if st.session_state.redes_lista:
+        eliminar = st.selectbox("¿Quitar alguna red?", [""] + st.session_state.redes_lista)
+        if eliminar and st.button("Eliminar red"):
+            st.session_state.redes_lista.remove(eliminar)
+            st.rerun()
 
     st.subheader("3. ¿Qué contenido consumes más?")
-    contenido = st.multiselect("Selecciona hasta 5 tipos que más ves", contenidos, max_selections=5)
+    contenido = st.multiselect("Selecciona hasta 5", contenidos, max_selections=5)
 
     st.subheader("4. ¡Haz la UNI más divertida!")
-    actividad = st.text_area("¿Qué actividad o evento te gustaría que organicemos? (fiesta, taller, torneo, cine, viaje, etc.)")
+    actividad = st.text_area("¿Qué actividad o evento te gustaría? (fiesta, taller, torneo, viaje, cine, etc.)")
 
     enviado = st.form_submit_button("¡ENVIAR Y VER RESULTADOS EN VIVO!")
 
     if enviado:
-        if not nombre or not redes_seleccionadas:
-            st.error("Nombre y al menos una red social son obligatorios")
+        if not nombre or len(st.session_state.redes_lista) == 0:
+            st.error("Nombre y al menos una red son obligatorios")
         else:
-            # Calcular nivel 1-10
+            # Calcular nivel
             if horas_totales <= 1: nivel = 1
             elif horas_totales <= 2: nivel = 2
             elif horas_totales <= 3: nivel = 3
@@ -82,7 +107,7 @@ with st.form("encuesta_final"):
             elif horas_totales <= 14: nivel = 9
             else: nivel = 10
 
-            # Guardar datos
+            # Guardar
             nuevo = {
                 "Nombre": nombre,
                 "Carrera": carrera,
@@ -90,7 +115,7 @@ with st.form("encuesta_final"):
                 "Redes_Usadas": " | ".join(redes_con_horas),
                 "Horas_Totales": round(horas_totales, 2),
                 "Contenido_Favorito": " | ".join(contenido),
-                "Actividad_Sugerida": actividad.strip() if actividad.strip() else "No sugirió",
+                "Actividad_Sugerida": actividad.strip() if actividad.strip() else "Sin sugerencia",
                 "Nivel": nivel,
                 "Fecha": datetime.now().strftime("%d/%m/%Y %H:%M")
             }
@@ -98,42 +123,38 @@ with st.form("encuesta_final"):
             df = pd.concat([df, pd.DataFrame([nuevo])], ignore_index=True)
             df.to_csv(CSV_FILE, index=False)
 
-            st.success("¡GRACIAS POR PARTICIPAR!")
+            st.success("¡GRACIAS!")
             st.balloons()
-            st.subheader(f"Tu nivel personal: **{nivel}/10** → {horas_totales:.2f} horas diarias")
+            st.subheader(f"Tu nivel: **{nivel}/10** → {horas_totales:.2f} horas diarias")
             if nivel >= 7:
-                st.error("¡CUIDADO! Uso alto. Si necesitas ayuda: +591 64143280 (Daniel)")
+                st.error("¡Alto consumo! Ayuda: +591 64143280")
 
-            # ====================== RESULTADOS PÚBLICOS EN VIVO ======================
+            # ================= RESULTADOS PÚBLICOS =================
             st.markdown("---")
-            st.header("RESULTADOS EN VIVO DE TODA LA UNIVERSIDAD SALESIANA")
+            st.header("RESULTADOS EN VIVO - UNIVERSIDAD SALESIANA")
 
             col1, col2, col3 = st.columns(3)
-            col1.metric("Total participantes", len(df))
-            col2.metric("Horas promedio diarias", round(df["Horas_Totales"].mean(), 2))
+            col1.metric("Participantes", len(df))
+            col2.metric("Horas promedio", round(df["Horas_Totales"].mean(), 2))
             col3.metric("Nivel promedio", round(df["Nivel"].mean(), 1))
 
-            # Gráfico 1: Participación por carrera
+            # Gráfico 1: Por carrera
             fig1 = px.bar(df["Carrera"].value_counts(), title="Participación por carrera")
             st.plotly_chart(fig1, use_container_width=True)
 
-            # Gráfico 2: Niveles de adicción
-            nivel_counts = df["Nivel"].value_counts().sort_index()
-            fig2 = px.bar(x=nivel_counts.index, y=nivel_counts.values, 
-                          title="¿Cuántos estudiantes están en cada nivel?", 
-                          labels={"x": "Nivel (1-10)", "y": "Cantidad"})
+            # Gráfico 2: Niveles
+            fig2 = px.bar(df["Nivel"].value_counts().sort_index(), title="Estudiantes por nivel de uso")
             st.plotly_chart(fig2, use_container_width=True)
 
-            # Gráfico 3: Contenido más consumido
-            contenido_flat = df["Contenido_Favorito"].str.split(" | ", expand=True).stack()
-            top_contenido = contenido_flat.value_counts().head(10)
-            fig3 = px.pie(values=top_contenido.values, names=top_contenido.index, 
-                          title="Contenido más consumido por los estudiantes")
+            # Gráfico 3: Contenido
+            cont_flat = df["Contenido_Favorito"].str.split(" | ", expand=True).stack()
+            top_cont = cont_flat.value_counts().head(10)
+            fig3 = px.pie(values=top_cont.values, names=top_cont.index, title="Contenido más visto")
             st.plotly_chart(fig3, use_container_width=True)
 
-            # Tabla pública completa
+            # Tabla final
             st.subheader("Todos los participantes")
-            display = df[["Nombre", "Carrera", "Número", "Nivel", "Actividad_Sugerida"]].copy()
-            st.dataframe(display, use_container_width=True, hide_index=True)
+            st.dataframe(df[["Nombre", "Carrera", "Número", "Nivel", "Actividad_Sugerida"]], 
+                        use_container_width=True, hide_index=True)
 
-            st.info("¡Comparte este link para que todos vean cómo estamos como universidad!")
+            st.info("¡Comparte este link y todos verán los resultados en vivo!")
