@@ -1,130 +1,134 @@
-# app.py - ENCUESTA PÚBLICA COMPLETA CON GRÁFICOS Y TABLA FINAL
+ app.py
 import streamlit as st
 import pandas as pd
-import plotly.express as px
+from datetime import datetime
 import os
 
-st.set_page_config(page_title="Encuesta Redes Sociales UNI", layout="centered")
-st.title("¿Cuánto tiempo usas redes sociales? + ¿Qué evento quieres en la UNI?")
-st.markdown("**Encuesta pública y anónima opcional** | Al final verás los resultados en vivo")
+st.set_page_config(page_title="Encuesta Uso de Redes Sociales - Universidad", layout="centered")
+st.title("Cuantos tiempo pasas realmente en redes sociales?")
 
-CSV_FILE = "datos_encuestas_publicas.csv"
+st.markdown("""
+Por favor responde con sinceridad. Esta encuesta es anonima pero nos ayuda a mejorar 
+la experiencia universitaria y detectar casos de uso excesivo.
+""")
 
-# Crear archivo si no existe
-if not os.path.exists(CSV_FILE):
-    df = pd.DataFrame(columns=["Nombre", "Carrera", "Número", "Redes_Horas", "Horas_Totales", 
-                               "Contenido_Favorito", "Actividad_Sugerida", "Nivel", "Fecha"])
-    df.to_csv(CSV_FILE, index=False)
+# --- Datos personales ---
+with st.expander("Tus datos (solo si quieres ayuda personalizada)", expanded=True):
+    nombre = st.text_input("Nombre completo (opcional pero recomendado)")
+    carrera = st.selectbox("Carrera que estudias", [
+        "", "Ingenieria en Sistemas", "Medicina", "Derecho", "Psicologia", 
+        "Administracion", "Arquitectura", "Diseno Grafico", "Otro"
+    ])
+    numero = st.text_input("Numero de WhatsApp (si necesitas ayuda para reducir el uso)")
 
-contenidos = ["Memes", "Reels/TikTok", "Stories", "Fotos de amigos", "Tutoriales", "Deportes", 
-              "Música", "Influencers", "Juegos", "Noticias", "Moda", "Comida", "Fitness", "Anime", "Otros"]
+# --- Redes sociales (ilimitadas) ---
+st.subheader("Redes sociales que usas y tiempo diario")
+if 'redes_temp' not in st.session_state:
+    st.session_state.redes_temp = []
 
-with st.form("encuesta"):
-    st.subheader("Tus datos")
-    nombre = st.text_input("Nombre completo (se mostrará públicamente)")
-    carrera = st.selectbox("Carrera", ["Ingeniería de Sistemas", "Ingeniería Comercial", "Psicología", 
-                                       "Derecho", "Arquitectura", "Medicina", "Otra"])
-    numero = st.text_input("Tu número (opcional, se mostrará si lo pones)")
+def agregar_red():
+    red = st.session_state.nueva_red
+    hora = st.session_state.nueva_hora
+    if red and hora > 0:
+        st.session_state.redes_temp.append({"red": red, "horas": hora})
+        st.session_state.nueva_red = ""
+        st.session_state.nueva_hora = 0
 
-    st.subheader("Redes sociales + horas diarias")
-    redes_input = st.text_area("Escribe tus redes y horas (una por línea)\nEjemplo:\nInstagram - 4 horas\nTikTok - 3 horas\nYouTube - 2 horas")
-    
-    st.subheader("Contenido que más ves")
-    contenido = st.multiselect("Selecciona hasta 5", contenidos)
+st.text_input("Nombre de la red social", key="nueva_red")
+st.number_input("Horas diarias aproximadas (puedes usar decimales)", min_value=0.0, step=0.5, key="nueva_hora")
+st.button("Agregar red social", on_click=agregar_red)
 
-    st.subheader("¡Haz la UNI más divertida!")
-    actividad = st.text_area("¿Qué actividad o evento te gustaría que organice la universidad? (fiesta, taller, torneo, cine, etc.)")
+if st.session_state.redes_temp:
+    st.write("### Tus redes agregadas:")
+    total_horas = 0
+    for item in st.session_state.redes_temp:
+        st.write(f"- {item['red']}: {item['horas']} horas/dia")
+        total_horas += item['horas']
+    st.write(f"Total diario estimado: {total_horas:.2f} horas")
 
-    enviado = st.form_submit_button("¡ENVIAR Y VER RESULTADOS EN VIVO!")
+# --- Nivel de uso (10 niveles) ---
+def calcular_nivel(horas_totales):
+    if horas_totales <= 0.33: return 1   # 0-20 min
+    elif horas_totales <= 1: return 2     # hasta 1h
+    elif horas_totales <= 2: return 3
+    elif horas_totales <= 3: return 4
+    elif horas_totales <= 4: return 5
+    elif horas_totales <= 5: return 6
+    elif horas_totales <= 6: return 7
+    elif horas_totales <= 7: return 8
+    elif horas_totales <= 8: return 9
+    else: return 10
 
-    if enviado:
-        if not nombre or not redes_input:
-            st.error("Nombre y redes+horas son obligatorios")
+if st.session_state.redes_temp:
+    total_horas = sum(item['horas'] for item in st.session_state.redes_temp)
+    nivel = calcular_nivel(total_horas)
+    st.progress(nivel / 10)
+    st.write(f"Nivel de uso actual: {nivel}/10")
+
+    mensajes = {
+        1: "Excelente! Tienes un uso muy saludable",
+        2: "Muy bien, uso moderado y controlado",
+        3: "Bien, pero podrias reducir un poco mas",
+        4: "Uso moderado, empieza a poner limites",
+        5: "Cuidado, estas en zona amarilla",
+        6: "Alerta! Tu uso ya es alto",
+        7: "Peligro: estas en zona roja",
+        8: "Uso muy elevado, te afecta la productividad",
+        9: "Adiccion severa detectada",
+        10: "ADICCION CRITICA! Necesitas ayuda urgente"
+    }
+    st.warning(mensajes[nivel])
+
+    if nivel >= 7:
+        st.error(f"""
+        Si sientes que no puedes controlar tu tiempo en redes, 
+        escribeme al WhatsApp: 64193280 
+        Te ayudo gratis a reducir el uso!
+        """)
+
+# --- Contenido mas visto ---
+st.subheader("Que tipo de contenido consumes mas?")
+opciones_contenido = [
+    "Memes y humor", "Reels/TikToks bailes", "Tutoriales educativos", "Gaming/streams",
+    "Noticias", "Deportes", "Belleza/moda", "Fitness/gimnasio", "Comida/recetas",
+    "Viajes", "Musica", "Anime", "Politica", "Criptomonedas/inversiones",
+    "Motivacion/superacion", "ASMR", "Reviews de productos", "Vlogs diarios",
+    "Contenido religioso", "Otros"
+]
+
+contenido_fav = st.multiselect("Selecciona hasta 3 tipos de contenido que mas ves", opciones_contenido)
+
+# --- Horario de mayor uso ---
+st.subheader("En que horario usas mas las redes?")
+hora_pico = st.slider("Hora del dia donde mas te conectas", 0, 23, 20)
+
+# --- Enviar encuesta ---
+if st.button("Enviar mi encuesta", type="primary"):
+    if len(st.session_state.redes_temp) == 0:
+        st.error("Agrega al menos una red social")
+    else:
+        total_horas = sum(item['horas'] for item in st.session_state.redes_temp)
+        nivel = calcular_nivel(total_horas)
+        datos = {
+            "fecha": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "nombre": nombre or "Anonimo",
+            "carrera": carrera,
+            "numero": numero or "No proporcionado",
+            "total_horas": round(total_horas, 2),
+            "nivel": nivel,
+            "hora_pico": hora_pico,
+            "contenido_favorito": " | ".join(contenido_fav) if contenido_fav else "Ninguno",
+            "redes_detalle": str(st.session_state.redes_temp)
+        }
+        
+        # Guardar en CSV
+        archivo = "datos_encuestas.csv"
+        df_nuevo = pd.DataFrame([datos])
+        if os.path.exists(archivo):
+            df_nuevo.to_csv(archivo, mode='a', header=False, index=False)
         else:
-            # Procesar redes y horas
-            lineas = [l.strip() for l in redes_input.split("\n") if l.strip()]
-            horas_total = 0
-            redes_lista = []
-            for linea in lineas:
-                if "-" in linea:
-                    red = linea.split("-", 1)[0].strip()
-                    try:
-                        hora = float(linea.split("-")[1].strip().replace("horas", "").replace("h", ""))
-                        horas_total += hora
-                        redes_lista.append(f"{red}: {hora}h")
-                    except:
-                        pass
-            redes_str = " | ".join(redes_lista) if redes_lista else "Ninguna"
-
-            # Calcular nivel
-            if horas_total <= 1: nivel = 1
-            elif horas_total <= 2: nivel = 2
-            elif horas_total <= 3: nivel = 3
-            elif horas_total <= 4: nivel = 4
-            elif horas_total <= 5: nivel = 5
-            elif horas_total <= 7: nivel = 6
-            elif horas_total <= 9: nivel = 7
-            elif horas_total <= 11: nivel = 8
-            elif horas_total <= 14: nivel = 9
-            else: nivel = 10
-
-            # Guardar
-            nuevo = {
-                "Nombre": nombre,
-                "Carrera": carrera,
-                "Número": numero if numero else "No dio",
-                "Redes_Horas": redes_str,
-                "Horas_Totales": round(horas_total, 1),
-                "Contenido_Favorito": " | ".join(contenido),
-                "Actividad_Sugerida": actividad.strip(),
-                "Nivel": nivel,
-                "Fecha": pd.Timestamp.now().strftime("%d/%m/%Y")
-            }
-            df = pd.read_csv(CSV_FILE)
-            df = pd.concat([df, pd.DataFrame([nuevo])], ignore_index=True)
-            df.to_csv(CSV_FILE, index=False)
-
-            st.success("¡Gracias por participar!")
-            st.balloons()
-
-            st.subheader(f"Tu nivel de uso: **{nivel}/10** → {horas_total:.1f} horas diarias")
-            if nivel >= 7:
-                st.error("¡Cuidado! Tu uso es alto. Si quieres ayuda: +591 64143280 (Daniel)")
-
-            # =================== GRÁFICOS Y TABLA PÚBLICA ===================
-            st.markdown("---")
-            st.header("RESULTADOS EN VIVO DE TODA LA UNIVERSIDAD")
-
-            col1, col2 = st.columns(2)
-            with col1:
-                st.metric("Total estudiantes", len(df))
-            with col2:
-                st.metric("Horas promedio diarias", round(df["Horas_Totales"].mean(), 1))
-
-            # Gráfico 1: Participación por carrera
-            carrera_count = df["Carrera"].value_counts()
-            fig1 = px.bar(x=carrera_count.index, y=carrera_count.values, 
-                          title="Participación por carrera", labels={"x": "Carrera", "y": "Estudiantes"})
-            st.plotly_chart(fig1, use_container_width=True)
-
-            # Gráfico 2: Niveles de adicción
-            nivel_count = df["Nivel"].value_counts().sort_index()
-            fig2 = px.bar(x=nivel_count.index, y=nivel_count.values, 
-                          title="¿Cuántos estudiantes están en cada nivel?", 
-                          labels={"x": "Nivel (1-10)", "y": "Cantidad"})
-            st.plotly_chart(fig2, use_container_width=True)
-
-            # Gráfico 3: Contenido favorito
-            contenido_flat = df["Contenido_Favorito"].str.split(" | ", expand=True).stack()
-            top_contenido = contenido_flat.value_counts().head(10)
-            fig3 = px.pie(values=top_contenido.values, names=top_contenido.index, 
-                          title="Contenido que más ven los estudiantes")
-            st.plotly_chart(fig3, use_container_width=True)
-
-            # Tabla pública completa
-            st.subheader("Todos los que participaron (público)")
-            df_display = df[["Nombre", "Carrera", "Número", "Nivel", "Actividad_Sugerida"]].copy()
-            df_display["Nivel"] = df_display["Nivel"].astype(int)
-            st.dataframe(df_display, use_container_width=True)
-
-            st.info("¡Estos datos se actualizan SOLO con cada nueva respuesta! Comparte el link para que todos vean cómo estamos como universidad.")
+            df_nuevo.to_csv(archivo, index=False)
+        
+        st.success("Encuesta enviada con exito! Gracias por participar")
+        st.balloons()
+        st.session_state.redes_temp = []
