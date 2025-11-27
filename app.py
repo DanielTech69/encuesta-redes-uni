@@ -1,110 +1,71 @@
-# app.py - VERSIÓN FINAL OFICIAL CON "AÑADIR OTRA RED"
+# app.py - ENCUESTA PÚBLICA COMPLETA CON GRÁFICOS Y TABLA FINAL
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from datetime import datetime
 import os
 
 st.set_page_config(page_title="Encuesta Redes Sociales UNI", layout="centered")
-st.title("¿Cuánto usas las redes? + ¿Qué evento quieres en la UNI?")
-st.markdown("**Universidad Salesiana de Bolivia** | Resultados en vivo al final")
+st.title("¿Cuánto tiempo usas redes sociales? + ¿Qué evento quieres en la UNI?")
+st.markdown("**Encuesta pública y anónima opcional** | Al final verás los resultados en vivo")
 
-CSV_FILE = "datos_definitivos.csv"
+CSV_FILE = "datos_encuestas_publicas.csv"
 
 # Crear archivo si no existe
 if not os.path.exists(CSV_FILE):
-    df = pd.DataFrame(columns=["Nombre", "Carrera", "Número", "Redes_Usadas", "Horas_Totales", 
+    df = pd.DataFrame(columns=["Nombre", "Carrera", "Número", "Redes_Horas", "Horas_Totales", 
                                "Contenido_Favorito", "Actividad_Sugerida", "Nivel", "Fecha"])
     df.to_csv(CSV_FILE, index=False)
 
-# Lista inicial de redes
-redes_base = [
-    "Instagram", "TikTok", "WhatsApp", "YouTube", "Facebook", "Twitter/X", 
-    "Snapchat", "Twitch", "Discord", "Pinterest", "Juegos (Steam, Roblox, etc.)", "BeReal"
-]
+contenidos = ["Memes", "Reels/TikTok", "Stories", "Fotos de amigos", "Tutoriales", "Deportes", 
+              "Música", "Influencers", "Juegos", "Noticias", "Moda", "Comida", "Fitness", "Anime", "Otros"]
 
-# 19 tipos de contenido que me diste
-contenidos = [
-    "Tutoriales (paso a paso)", "Bailes", "Lip-sync", "Proceso vs. resultado", "Carruseles orgánicos",
-    "Mal y bien (cómo NO hacerlo)", "Contenido sobrio/reflexivo", "Los tops (listas)", "Videos con efecto doble",
-    "Mini-entrevistas", "Un día en mi vida", "Videos de humor", "Retos virales", "DIY (Hazlo tú mismo)",
-    "Videos POV", "Reseñas y unboxings", "ASMR", "Vlogs de viaje", "Preguntas y respuestas", "Detrás de cámaras"
-]
+with st.form("encuesta"):
+    st.subheader("Tus datos")
+    nombre = st.text_input("Nombre completo (se mostrará públicamente)")
+    carrera = st.selectbox("Carrera", ["Ingeniería de Sistemas", "Ingeniería Comercial", "Psicología", 
+                                       "Derecho", "Arquitectura", "Medicina", "Otra"])
+    numero = st.text_input("Tu número (opcional, se mostrará si lo pones)")
 
-with st.form("encuesta_final"):
-    st.subheader("1. Tus datos")
-    nombre = st.text_input("Nombre completo (se verá públicamente)")
-    carrera = st.selectbox("Carrera", [
-        "Ingeniería de Sistemas", "Ingeniería Comercial", "Psicología", "Derecho", "Arquitectura", 
-        "Medicina", "Contaduría", "Diseño Gráfico", "Otra"
-    ])
-    numero = st.text_input("Tu número (opcional)")
-
-    st.subheader("2. Redes sociales y tiempo diario")
+    st.subheader("Redes sociales + horas diarias")
+    redes_input = st.text_area("Escribe tus redes y horas (una por línea)\nEjemplo:\nInstagram - 4 horas\nTikTok - 3 horas\nYouTube - 2 horas")
     
-    # Estado para guardar las redes seleccionadas
-    if "redes_lista" not in st.session_state:
-        st.session_state.redes_lista = []
+    st.subheader("Contenido que más ves")
+    contenido = st.multiselect("Selecciona hasta 5", contenidos)
 
-    # Añadir red predefinida
-    red_pre = st.selectbox("Selecciona una red", [""] + redes_base + ["Otra (escribir)"])
-    if red_pre and red_pre not in st.session_state.redes_lista:
-        if st.button(f"Añadir {red_pre}"):
-            if red_pre == "Otra (escribir)":
-                otra = st.text_input("Escribe el nombre de la red", key="otra_input")
-                if otra and st.button("Confirmar y añadir"):
-                    st.session_state.redes_lista.append(otra)
-                    st.success(f"{otra} añadida")
-                    st.rerun()
-            else:
-                st.session_state.redes_lista.append(red_pre)
-                st.rerun()
-
-    # Mostrar redes añadidas con horas/minutos
-    horas_totales = 0
-    redes_con_horas = []
-    for i, red in enumerate(st.session_state.redes_lista):
-        st.markdown(f"**{i + 1}. {red}**")
-        col1, col2 = st.columns(2)
-        with col1:
-            horas = st.selectbox(f"Horas en {red}", options=list(range(0, 21)), key=f"h_{i}")
-        with col2:
-            minutos = st.selectbox(f"Minutos", options=[0, 15, 30, 45], key=f"m_{i}")
-        total_min = horas * 60 + minutos
-        if total_min > 0:
-            horas_decimal = round(total_min / 60, 2)
-            horas_totales += horas_decimal
-            redes_con_horas.append(f"{red}: {horas}h {minutos}m")
-
-    # Botón para eliminar red
-    if st.session_state.redes_lista:
-        eliminar = st.selectbox("¿Quitar alguna red?", [""] + st.session_state.redes_lista)
-        if eliminar and st.button("Eliminar red"):
-            st.session_state.redes_lista.remove(eliminar)
-            st.rerun()
-
-    st.subheader("3. ¿Qué contenido consumes más?")
-    contenido = st.multiselect("Selecciona hasta 5", contenidos, max_selections=5)
-
-    st.subheader("4. ¡Haz la UNI más divertida!")
-    actividad = st.text_area("¿Qué actividad o evento te gustaría? (fiesta, taller, torneo, viaje, cine, etc.)")
+    st.subheader("¡Haz la UNI más divertida!")
+    actividad = st.text_area("¿Qué actividad o evento te gustaría que organice la universidad? (fiesta, taller, torneo, cine, etc.)")
 
     enviado = st.form_submit_button("¡ENVIAR Y VER RESULTADOS EN VIVO!")
 
     if enviado:
-        if not nombre or len(st.session_state.redes_lista) == 0:
-            st.error("Nombre y al menos una red son obligatorios")
+        if not nombre or not redes_input:
+            st.error("Nombre y redes+horas son obligatorios")
         else:
+            # Procesar redes y horas
+            lineas = [l.strip() for l in redes_input.split("\n") if l.strip()]
+            horas_total = 0
+            redes_lista = []
+            for linea in lineas:
+                if "-" in linea:
+                    red = linea.split("-", 1)[0].strip()
+                    try:
+                        hora = float(linea.split("-")[1].strip().replace("horas", "").replace("h", ""))
+                        horas_total += hora
+                        redes_lista.append(f"{red}: {hora}h")
+                    except:
+                        pass
+            redes_str = " | ".join(redes_lista) if redes_lista else "Ninguna"
+
             # Calcular nivel
-            if horas_totales <= 1: nivel = 1
-            elif horas_totales <= 2: nivel = 2
-            elif horas_totales <= 3: nivel = 3
-            elif horas_totales <= 4: nivel = 4
-            elif horas_totales <= 5: nivel = 5
-            elif horas_totales <= 7: nivel = 6
-            elif horas_totales <= 9: nivel = 7
-            elif horas_totales <= 11: nivel = 8
-            elif horas_totales <= 14: nivel = 9
+            if horas_total <= 1: nivel = 1
+            elif horas_total <= 2: nivel = 2
+            elif horas_total <= 3: nivel = 3
+            elif horas_total <= 4: nivel = 4
+            elif horas_total <= 5: nivel = 5
+            elif horas_total <= 7: nivel = 6
+            elif horas_total <= 9: nivel = 7
+            elif horas_total <= 11: nivel = 8
+            elif horas_total <= 14: nivel = 9
             else: nivel = 10
 
             # Guardar
@@ -112,49 +73,58 @@ with st.form("encuesta_final"):
                 "Nombre": nombre,
                 "Carrera": carrera,
                 "Número": numero if numero else "No dio",
-                "Redes_Usadas": " | ".join(redes_con_horas),
-                "Horas_Totales": round(horas_totales, 2),
+                "Redes_Horas": redes_str,
+                "Horas_Totales": round(horas_total, 1),
                 "Contenido_Favorito": " | ".join(contenido),
-                "Actividad_Sugerida": actividad.strip() if actividad.strip() else "Sin sugerencia",
+                "Actividad_Sugerida": actividad.strip(),
                 "Nivel": nivel,
-                "Fecha": datetime.now().strftime("%d/%m/%Y %H:%M")
+                "Fecha": pd.Timestamp.now().strftime("%d/%m/%Y")
             }
             df = pd.read_csv(CSV_FILE)
             df = pd.concat([df, pd.DataFrame([nuevo])], ignore_index=True)
             df.to_csv(CSV_FILE, index=False)
 
-            st.success("¡GRACIAS!")
+            st.success("¡Gracias por participar!")
             st.balloons()
-            st.subheader(f"Tu nivel: **{nivel}/10** → {horas_totales:.2f} horas diarias")
+
+            st.subheader(f"Tu nivel de uso: **{nivel}/10** → {horas_total:.1f} horas diarias")
             if nivel >= 7:
-                st.error("¡Alto consumo! Ayuda: +591 64143280")
+                st.error("¡Cuidado! Tu uso es alto. Si quieres ayuda: +591 64143280 (Daniel)")
 
-            # ================= RESULTADOS PÚBLICOS =================
+            # =================== GRÁFICOS Y TABLA PÚBLICA ===================
             st.markdown("---")
-            st.header("RESULTADOS EN VIVO - UNIVERSIDAD SALESIANA")
+            st.header("RESULTADOS EN VIVO DE TODA LA UNIVERSIDAD")
 
-            col1, col2, col3 = st.columns(3)
-            col1.metric("Participantes", len(df))
-            col2.metric("Horas promedio", round(df["Horas_Totales"].mean(), 2))
-            col3.metric("Nivel promedio", round(df["Nivel"].mean(), 1))
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("Total estudiantes", len(df))
+            with col2:
+                st.metric("Horas promedio diarias", round(df["Horas_Totales"].mean(), 1))
 
-            # Gráfico 1: Por carrera
-            fig1 = px.bar(df["Carrera"].value_counts(), title="Participación por carrera")
+            # Gráfico 1: Participación por carrera
+            carrera_count = df["Carrera"].value_counts()
+            fig1 = px.bar(x=carrera_count.index, y=carrera_count.values, 
+                          title="Participación por carrera", labels={"x": "Carrera", "y": "Estudiantes"})
             st.plotly_chart(fig1, use_container_width=True)
 
-            # Gráfico 2: Niveles
-            fig2 = px.bar(df["Nivel"].value_counts().sort_index(), title="Estudiantes por nivel de uso")
+            # Gráfico 2: Niveles de adicción
+            nivel_count = df["Nivel"].value_counts().sort_index()
+            fig2 = px.bar(x=nivel_count.index, y=nivel_count.values, 
+                          title="¿Cuántos estudiantes están en cada nivel?", 
+                          labels={"x": "Nivel (1-10)", "y": "Cantidad"})
             st.plotly_chart(fig2, use_container_width=True)
 
-            # Gráfico 3: Contenido
-            cont_flat = df["Contenido_Favorito"].str.split(" | ", expand=True).stack()
-            top_cont = cont_flat.value_counts().head(10)
-            fig3 = px.pie(values=top_cont.values, names=top_cont.index, title="Contenido más visto")
+            # Gráfico 3: Contenido favorito
+            contenido_flat = df["Contenido_Favorito"].str.split(" | ", expand=True).stack()
+            top_contenido = contenido_flat.value_counts().head(10)
+            fig3 = px.pie(values=top_contenido.values, names=top_contenido.index, 
+                          title="Contenido que más ven los estudiantes")
             st.plotly_chart(fig3, use_container_width=True)
 
-            # Tabla final
-            st.subheader("Todos los participantes")
-            st.dataframe(df[["Nombre", "Carrera", "Número", "Nivel", "Actividad_Sugerida"]], 
-                        use_container_width=True, hide_index=True)
+            # Tabla pública completa
+            st.subheader("Todos los que participaron (público)")
+            df_display = df[["Nombre", "Carrera", "Número", "Nivel", "Actividad_Sugerida"]].copy()
+            df_display["Nivel"] = df_display["Nivel"].astype(int)
+            st.dataframe(df_display, use_container_width=True)
 
-            st.info("¡Comparte este link y todos verán los resultados en vivo!")
+            st.info("¡Estos datos se actualizan SOLO con cada nueva respuesta! Comparte el link para que todos vean cómo estamos como universidad.")
