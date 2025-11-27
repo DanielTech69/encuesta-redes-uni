@@ -1,4 +1,3 @@
- app.py
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -132,3 +131,4 @@ if st.button("Enviar mi encuesta", type="primary"):
         st.success("Encuesta enviada con exito! Gracias por participar")
         st.balloons()
         st.session_state.redes_temp = []
+
